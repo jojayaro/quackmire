@@ -2,7 +2,7 @@
 
 Quackmire is an interactive DuckDB client written in Rust using the [ratatui](https://github.com/tui-rs-revival/ratatui) library. It provides a terminal-based interface for executing SQL queries and exploring data files.
 
-![](assets/Quackmire_Demo.gif)
+![](./assets/Quackmire_Demo.gif)
 
 ## Features
 
