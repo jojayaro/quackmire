@@ -1,0 +1,19 @@
+[package]
+name = "quackmire"
+version = "0.1.0"
+authors = ["Jesus Jayaro <jayaro@gmail.com>"]
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+futures = "0.3.30"
+ratatui = { version = "0.28.1", features = ["unstable-widget-ref"] }
+duckdb = { version = "1.0.0", features = ["bundled", "csv", "modern-full"] }
+tokio = { version = "1.39.3", features = ["full"] }
+tui-textarea = "0.6.1"
+unicode-width = "0.1.13"
+ratatui-explorer = "0.1.1"
+
+[patch.crates-io]
+ratatui-explorer = { git = "https://github.com/jojayaro/ratatui-explorer.git", branch = "master" }
