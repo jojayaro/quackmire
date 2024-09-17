@@ -1,11 +1,19 @@
 name: Build
-on: [push]
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
 env:
   PROJECT_NAME: quackmire
+
 jobs:
   build:
     runs-on: ${{ matrix.runner }}
- 
+
     strategy:
       matrix:
         include:
@@ -21,64 +29,99 @@ jobs:
           - name: macos-arm64
             runner: macos-latest
             target: aarch64-apple-darwin
- 
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
- 
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: "${{ matrix.target }}"
- 
+
       - name: Setup Cache
         uses: Swatinem/rust-cache@v2
- 
+
       - name: Build Binary
         run: cargo build --verbose --locked --release --target ${{ matrix.target }}
- 
-      - name: Release Binary
+
+      - name: Package Binary
         shell: bash
         run: |
           BIN_SUFFIX=""
           if [[ "${{ matrix.runner }}" == "windows-latest" ]]; then
             BIN_SUFFIX=".exe"
           fi
- 
-          # The built binary output location
-          BIN_OUTPUT="target/${{ matrix.target }}/release/${PROJECT_NAME}${BIN_SUFFIX}"
- 
-          # Define a better name for the final binary
-          BIN_RELEASE="${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}"
-          BIN_RELEASE_VERSIONED="${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${BIN_SUFFIX}"
- 
-          # Create the releases directory if it doesn't exist
-          mkdir -p releases
 
-          # Move the built binary to the releases directory
+          BIN_OUTPUT="target/${{ matrix.target }}/release/${PROJECT_NAME}${BIN_SUFFIX}"
+          BIN_RELEASE="${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}"
+
+          mkdir -p releases
           mv "${BIN_OUTPUT}" "./releases/${BIN_RELEASE}"
-      
-      - name: Upload Release Binary
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.name }}-binary
           path: ./releases/${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}
 
-      - name: Create GitHub Release
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
 
-      - name: Upload Binary to GitHub Release
-        uses: actions/upload-release-asset@v1
+      - name: Store Release URL
+        run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
+
+      - name: Upload Release URL
+        uses: actions/upload-artifact@v3
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./releases/${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}
-          asset_name: ${{ env.PROJECT_NAME }}-${{ matrix.name }}-${{ github.ref_name }}${BIN_SUFFIX}
+          name: release_url
+          path: release_url.txt
+
+  upload-release-assets:
+    needs: create-release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: linux-amd64
+          - name: win-amd64
+          - name: macos-amd64
+          - name: macos-arm64
+
+    steps:
+      - name: Download Release URL
+        uses: actions/download-artifact@v3
+        with:
+          name: release_url
+
+      - name: Get Release URL
+        id: get_release_url
+        run: |
+          echo "::set-output name=release_url::$(cat release_url.txt)"
+
+      - name: Download Binary
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ matrix.name }}-binary
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release_url.outputs.release_url }}
+          asset_path: ./${{ env.PROJECT_NAME }}-${{ matrix.name }}${{ matrix.name == 'win-amd64' && '.exe' || '' }}
+          asset_name: ${{ env.PROJECT_NAME }}-${{ matrix.name }}-${{ github.ref_name }}${{ matrix.name == 'win-amd64' && '.exe' || '' }}
           asset_content_type: application/octet-stream
