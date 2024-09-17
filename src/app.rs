@@ -1,6 +1,11 @@
 use crate::custom_table::TableState;
 use std::error;
 
+use duckdb::arrow::error::ArrowError;
+use duckdb::arrow::record_batch::RecordBatchIterator;
+use std::error::Error;
+use std::vec::IntoIter;
+
 use duckdb::{arrow::array::RecordBatch, Connection, Result as DuckResult};
 use ratatui::widgets::ScrollbarState;
 use ratatui_explorer::FileExplorer;
@@ -10,7 +15,6 @@ use tui_textarea::TextArea;
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
 /// Application.
-#[derive(Debug)]
 pub struct App {
     pub running: bool,
     pub connection: Connection,
@@ -25,6 +29,9 @@ pub struct App {
     pub horizontal_scroll_state: ScrollbarState,
     pub textarea: TextArea<'static>,
     pub file_explorer: FileExplorer,
+    #[allow(dead_code)]
+    pub results_iterator: Option<RecordBatchIterator<IntoIter<Result<RecordBatch, ArrowError>>>>,
+    pub current_batch: Option<RecordBatch>,
 }
 
 impl App {
@@ -43,11 +50,29 @@ impl App {
             textarea: TextArea::default(),
             file_explorer: FileExplorer::new()?,
             table_state: TableState::default(),
+            results_iterator: None,
+            current_batch: None,
         })
     }
-    pub fn execute_query(&mut self) -> DuckResult<()> {
+    pub fn run_query(&mut self) -> Result<(), Box<dyn Error>> {
         let mut stmt = self.connection.prepare(&self.input)?;
-        self.results = stmt.query_arrow([])?.collect();
+        let results: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
+        if !results.is_empty() {
+            let schema = results[0].schema();
+            let result_vec: Vec<Result<RecordBatch, ArrowError>> =
+                results.into_iter().map(Ok).collect();
+            let result_iter: IntoIter<Result<RecordBatch, ArrowError>> = result_vec.into_iter();
+
+            self.results_iterator = Some(RecordBatchIterator::new(result_iter, schema.clone()));
+            self.current_batch = self
+                .results_iterator
+                .as_mut()
+                .and_then(|iter| iter.next().transpose().ok())
+                .flatten();
+        } else {
+            self.results_iterator = None;
+            self.current_batch = None;
+        }
         Ok(())
     }
 
@@ -64,12 +89,38 @@ impl App {
     }
 
     pub fn scroll_vertical(&mut self, amount: isize) {
-        self.vertical_scroll = self.vertical_scroll.saturating_add_signed(amount);
+        if amount > 0 {
+            // Scrolling down
+            if self.vertical_scroll == self.current_batch.as_ref().map_or(0, |b| b.num_rows() - 1) {
+                // Load next batch
+                if let Some(iter) = &mut self.results_iterator {
+                    if let Some(Ok(next_batch)) = iter.next() {
+                        self.current_batch = Some(next_batch);
+                        self.vertical_scroll = 0;
+                    }
+                }
+            } else {
+                self.vertical_scroll = self.vertical_scroll.saturating_add(amount as usize);
+            }
+        } else {
+            // Scrolling up
+            if self.vertical_scroll == 0 {
+                // TODO: Implement loading previous batch if needed
+            } else {
+                self.vertical_scroll = self.vertical_scroll.saturating_sub((-amount) as usize);
+            }
+        }
         self.vertical_scroll_state = self.vertical_scroll_state.position(self.vertical_scroll);
     }
 
     pub fn scroll_horizontal(&mut self, amount: isize) {
-        self.horizontal_scroll = self.horizontal_scroll.saturating_add_signed(amount);
+        if amount > 0 {
+            // Scrolling right
+            self.horizontal_scroll = self.horizontal_scroll.saturating_add(amount as usize);
+        } else {
+            // Scrolling left
+            self.horizontal_scroll = self.horizontal_scroll.saturating_sub((-amount) as usize);
+        }
         self.horizontal_scroll_state = self
             .horizontal_scroll_state
             .position(self.horizontal_scroll);

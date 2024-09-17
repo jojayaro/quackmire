@@ -13,7 +13,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
         }
         (KeyCode::F(2), _) => {
-            if let Err(e) = app.execute_query() {
+            if let Err(e) = app.run_query() {
                 app.results.clear();
                 app.error = Some(format!("Error: {}", e));
                 app.toggle_error_popup();

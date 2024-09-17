@@ -6,7 +6,7 @@ use ratatui::{
 };
 use unicode_width::UnicodeWidthStr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TableState {
     pub offset_x: u16,
     pub offset_y: u16,
@@ -21,30 +21,34 @@ impl Default for TableState {
     }
 }
 
-pub struct Table<'a> {
+pub struct Table {
     headers: Vec<String>,
     rows: Vec<Vec<String>>,
     widths: Vec<u16>,
-    block: Option<Block<'a>>,
+    block: Option<Block<'static>>,
     style: Style,
     header_style: Style,
 }
 
-impl<'a> Table<'a> {
+impl Table {
     pub fn new(headers: Vec<String>, rows: Vec<Vec<String>>) -> Self {
-        let widths = headers
-            .iter()
-            .enumerate()
-            .map(|(i, h)| {
-                std::cmp::max(
-                    h.width() as u16,
-                    rows.iter()
-                        .map(|r| r.get(i).map(|c| c.width() as u16).unwrap_or(0))
-                        .max()
-                        .unwrap_or(0),
-                )
-            })
-            .collect();
+        let widths = if headers.is_empty() {
+            vec![]
+        } else {
+            headers
+                .iter()
+                .enumerate()
+                .map(|(i, h)| {
+                    std::cmp::max(
+                        h.width() as u16,
+                        rows.iter()
+                            .map(|r| r.get(i).map(|c| c.width() as u16).unwrap_or(0))
+                            .max()
+                            .unwrap_or(0),
+                    )
+                })
+                .collect()
+        };
 
         Self {
             headers,
@@ -56,7 +60,7 @@ impl<'a> Table<'a> {
         }
     }
 
-    pub fn block(mut self, block: Block<'a>) -> Self {
+    pub fn block(mut self, block: Block<'static>) -> Self {
         self.block = Some(block);
         self
     }
@@ -72,7 +76,7 @@ impl<'a> Table<'a> {
     }
 }
 
-impl StatefulWidget for Table<'_> {
+impl StatefulWidget for Table {
     type State = TableState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
@@ -89,42 +93,39 @@ impl StatefulWidget for Table<'_> {
             return;
         }
 
-        // Fill the entire table area with the background color
         buf.set_style(table_area, self.style);
 
         let mut y = table_area.top();
-        let mut x = table_area.left();
+        let visible_width = table_area.width;
+        let visible_height = table_area.height;
 
         // Render headers
-        for (i, header) in self
-            .headers
-            .iter()
-            .enumerate()
-            .skip(state.offset_x as usize)
-        {
+        let mut x = table_area.left().saturating_sub(state.offset_x);
+        for (i, header) in self.headers.iter().enumerate() {
             let width = self.widths[i];
-            if x + width > table_area.right() {
-                break;
+            if x >= table_area.left() && x + width <= table_area.right() {
+                buf.set_string(x, y, header, self.header_style);
             }
-            buf.set_string(x, y, header, self.header_style);
             x += width + 1;
         }
 
         // Render rows
-        for row in self.rows.iter().skip(state.offset_y as usize) {
-            if y >= table_area.bottom() - 1 {
-                break;
-            }
-            y += 1;
-            x = table_area.left();
-
-            for (i, cell) in row.iter().enumerate().skip(state.offset_x as usize) {
-                let width = self.widths[i];
-                if x + width > table_area.right() {
+        if !self.rows.is_empty() {
+            for row in self.rows.iter().skip(state.offset_y as usize) {
+                y += 1;
+                if y >= table_area.bottom() {
                     break;
                 }
-                buf.set_string(x, y, cell, self.style);
-                x += width + 1;
+                let mut x = table_area.left().saturating_sub(state.offset_x);
+                for (i, cell) in row.iter().enumerate() {
+                    if i < self.widths.len() {
+                        let width = self.widths[i];
+                        if x >= table_area.left() && x + width <= table_area.right() {
+                            buf.set_string(x, y, cell, self.style);
+                        }
+                        x += width + 1;
+                    }
+                }
             }
         }
     }

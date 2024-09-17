@@ -1793,6 +1793,7 @@ dependencies = [
  "crossterm 0.28.1",
  "duckdb",
  "futures",
+ "rat-ftable",
  "ratatui",
  "ratatui-explorer",
  "tokio",
@@ -1864,6 +1865,55 @@ checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
 dependencies = [
  "num-traits",
  "rand",
+]
+
+[[package]]
+name = "rat-event"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7bda3ed7884df20eef6a13745009e1cb85203183754900da915ae0c13ab7df7"
+dependencies = [
+ "crossterm 0.28.1",
+ "log",
+ "ratatui",
+]
+
+[[package]]
+name = "rat-focus"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baa40839f32f7f40fa792f2d977d4ee08f50d2e898382d3b6192adaa9eb4f0f4"
+dependencies = [
+ "crossterm 0.28.1",
+ "log",
+ "rat-event",
+ "ratatui",
+]
+
+[[package]]
+name = "rat-ftable"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62e578a5d88780904334fef2d3f05a0d6aacccd7d6e7907264004caa1b75393d"
+dependencies = [
+ "crossterm 0.28.1",
+ "log",
+ "rat-event",
+ "rat-focus",
+ "rat-scrolled",
+ "ratatui",
+]
+
+[[package]]
+name = "rat-scrolled"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7f1f1a5718b49d0af4a5dad1c180e989191eb2421d0f51179ae4ae8d64af439"
+dependencies = [
+ "crossterm 0.28.1",
+ "log",
+ "rat-event",
+ "ratatui",
 ]
 
 [[package]]

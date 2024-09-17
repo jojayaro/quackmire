@@ -74,8 +74,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     frame.render_widget(header, top);
 
-    if !app.results.is_empty() {
-        let batch = &app.results[0];
+    if let Some(batch) = &app.current_batch {
         let table = table::create_table(batch)
             .block(
                 Block::default()
@@ -89,7 +88,11 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             .header_style(Style::default().fg(PURPLE).bold());
         // .selected_style(Style::default().bg(FG));
 
-        frame.render_stateful_widget(table, results, &mut app.table_state);
+        let mut table_state = app.table_state.clone();
+        table_state.offset_x = app.horizontal_scroll as u16;
+        table_state.offset_y = app.vertical_scroll as u16;
+
+        frame.render_stateful_widget(table, results, &mut table_state);
     } else {
         let no_results = Paragraph::new("")
             .block(
