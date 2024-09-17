@@ -11,8 +11,7 @@ env:
   PROJECT_NAME: quackmire
 
 jobs:
-  build:
-    runs-on: ${{ matrix.runner }}
+  build-and-release:
     strategy:
       matrix:
         include:
@@ -29,6 +28,7 @@ jobs:
             runner: macos-latest
             target: aarch64-apple-darwin
 
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,60 +55,12 @@ jobs:
           BIN_OUTPUT="target/${{ matrix.target }}/release/${PROJECT_NAME}${BIN_SUFFIX}"
           BIN_RELEASE="${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${BIN_SUFFIX}"
 
-          mkdir -p releases
-          mv "${BIN_OUTPUT}" "./releases/${BIN_RELEASE}"
+          mv "${BIN_OUTPUT}" "${BIN_RELEASE}"
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: binaries
-          path: ./releases/${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${{ runner.os == 'Windows' && '.exe' || '' }}
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: binaries
-          path: ./binaries
-
-      - name: Create Release
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            const fs = require('fs').promises;
-            const { repo: { owner, repo }, ref } = context;
-            const tag = ref.replace('refs/tags/', '');
-
-            // Create the release
-            const { data: release } = await github.rest.repos.createRelease({
-              owner,
-              repo,
-              tag_name: tag,
-              name: `Release ${tag}`,
-              draft: false,
-              prerelease: false
-            });
-
-            // Upload each asset
-            const binaries = await fs.readdir('./binaries');
-            for (const binary of binaries) {
-              const filePath = `./binaries/${binary}`;
-              const fileContent = await fs.readFile(filePath);
-
-              await github.rest.repos.uploadReleaseAsset({
-                owner,
-                repo,
-                release_id: release.id,
-                name: binary,
-                data: fileContent
-              });
-
-              console.log(`Uploaded ${binary}`);
-            }
+          files: ${{ env.PROJECT_NAME }}-${{ github.ref_name }}-${{ matrix.name }}${{ runner.os == 'Windows' && '.exe' || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
