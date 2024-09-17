@@ -1,4 +1,4 @@
-name: Build
+name: Build and Release
 on:
   push:
     tags:
@@ -13,7 +13,6 @@ env:
 jobs:
   build:
     runs-on: ${{ matrix.runner }}
-
     strategy:
       matrix:
         include:
@@ -54,7 +53,7 @@ jobs:
           fi
 
           BIN_OUTPUT="target/${{ matrix.target }}/release/${PROJECT_NAME}${BIN_SUFFIX}"
-          BIN_RELEASE="${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}"
+          BIN_RELEASE="${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${BIN_SUFFIX}"
 
           mkdir -p releases
           mv "${BIN_OUTPUT}" "./releases/${BIN_RELEASE}"
@@ -63,65 +62,45 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.name }}-binary
-          path: ./releases/${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}
+          path: ./releases/${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${{ runner.os == 'Windows' && '.exe' || '' }}
 
-  create-release:
+  release:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const { data: release } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: context.ref.replace('refs/tags/', ''),
+              name: `Release ${context.ref.replace('refs/tags/', '')}`,
+              draft: false,
+              prerelease: false
+            });
+            core.exportVariable('RELEASE_ID', release.id);
+            core.exportVariable('RELEASE_UPLOAD_URL', release.upload_url);
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Upload Release Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Store Release URL
-        run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
-
-      - name: Upload Release URL
-        uses: actions/upload-artifact@v3
-        with:
-          name: release_url
-          path: release_url.txt
-
-  upload-release-assets:
-    needs: create-release
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: linux-amd64
-          - name: win-amd64
-          - name: macos-amd64
-          - name: macos-arm64
-
-    steps:
-      - name: Download Release URL
-        uses: actions/download-artifact@v3
-        with:
-          name: release_url
-
-      - name: Get Release URL
-        id: get_release_url
         run: |
-          echo "::set-output name=release_url::$(cat release_url.txt)"
-
-      - name: Download Binary
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ matrix.name }}-binary
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.get_release_url.outputs.release_url }}
-          asset_path: ./${{ env.PROJECT_NAME }}-${{ matrix.name }}${{ matrix.name == 'win-amd64' && '.exe' || '' }}
-          asset_name: ${{ env.PROJECT_NAME }}-${{ matrix.name }}-${{ github.ref_name }}${{ matrix.name == 'win-amd64' && '.exe' || '' }}
-          asset_content_type: application/octet-stream
+          for artifact in *-binary/*; do
+            echo "Uploading $artifact"
+            curl -L \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              -T "$artifact" \
+              "${RELEASE_UPLOAD_URL%\{*}?name=$(basename "$artifact")"
+          done
