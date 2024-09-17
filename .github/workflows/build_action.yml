@@ -61,7 +61,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.name }}-binary
+          name: binaries
           path: ./releases/${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${{ runner.os == 'Windows' && '.exe' || '' }}
 
   release:
@@ -71,36 +71,44 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: binaries
+          path: ./binaries
+
       - name: Create Release
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
+            const fs = require('fs').promises;
+            const { repo: { owner, repo }, ref } = context;
+            const tag = ref.replace('refs/tags/', '');
+
+            // Create the release
             const { data: release } = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: context.ref.replace('refs/tags/', ''),
-              name: `Release ${context.ref.replace('refs/tags/', '')}`,
+              owner,
+              repo,
+              tag_name: tag,
+              name: `Release ${tag}`,
               draft: false,
               prerelease: false
             });
-            core.exportVariable('RELEASE_ID', release.id);
-            core.exportVariable('RELEASE_UPLOAD_URL', release.upload_url);
 
-      - name: Download Artifacts
-        uses: actions/download-artifact@v3
+            // Upload each asset
+            const binaries = await fs.readdir('./binaries');
+            for (const binary of binaries) {
+              const filePath = `./binaries/${binary}`;
+              const fileContent = await fs.readFile(filePath);
 
-      - name: Upload Release Assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          for artifact in *-binary/*; do
-            echo "Uploading $artifact"
-            curl -L \
-              -X POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Content-Type: application/octet-stream" \
-              -T "$artifact" \
-              "${RELEASE_UPLOAD_URL%\{*}?name=$(basename "$artifact")"
-          done
+              await github.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id: release.id,
+                name: binary,
+                data: fileContent
+              });
+
+              console.log(`Uploaded ${binary}`);
+            }
