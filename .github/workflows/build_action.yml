@@ -1,14 +1,11 @@
 name: Build
 on: [push]
 env:
-  # The project name specified in your Cargo.toml
   PROJECT_NAME: quackmire
 jobs:
   build:
-    # Set the job to run on the platform specified by the matrix below
     runs-on: ${{ matrix.runner }}
  
-    # Define the build matrix for cross-compilation
     strategy:
       matrix:
         include:
@@ -25,10 +22,9 @@ jobs:
             runner: macos-latest
             target: aarch64-apple-darwin
  
-    # The steps to run for each matrix item
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
  
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -56,5 +52,33 @@ jobs:
           BIN_RELEASE="${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}"
           BIN_RELEASE_VERSIONED="${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${BIN_SUFFIX}"
  
-          # Move the built binary where you want it
+          # Create the releases directory if it doesn't exist
+          mkdir -p releases
+
+          # Move the built binary to the releases directory
           mv "${BIN_OUTPUT}" "./releases/${BIN_RELEASE}"
+      
+      - name: Upload Release Binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.name }}-binary
+          path: ./releases/${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Binary to GitHub Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./releases/${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}
+          asset_name: ${{ PROJECT_NAME }}-${{ matrix.name }}-${{ github.ref_name }}${BIN_SUFFIX}
+          asset_content_type: application/octet-stream
