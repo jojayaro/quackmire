@@ -18,12 +18,6 @@ pub mod table;
 pub mod tui;
 pub mod ui;
 
-// fn execute_query(&mut self) -> DuckResult<()> {
-//     let mut stmt = self.connection.prepare(&self.input)?;
-//     self.results = stmt.query_arrow([])?.collect();
-//     Ok(())
-// }
-
 #[tokio::main]
 async fn main() -> AppResult<()> {
     // Create an application.

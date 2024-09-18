@@ -90,9 +90,7 @@ impl App {
 
     pub fn scroll_vertical(&mut self, amount: isize) {
         if amount > 0 {
-            // Scrolling down
             if self.vertical_scroll == self.current_batch.as_ref().map_or(0, |b| b.num_rows() - 1) {
-                // Load next batch
                 if let Some(iter) = &mut self.results_iterator {
                     if let Some(Ok(next_batch)) = iter.next() {
                         self.current_batch = Some(next_batch);
@@ -103,9 +101,7 @@ impl App {
                 self.vertical_scroll = self.vertical_scroll.saturating_add(amount as usize);
             }
         } else {
-            // Scrolling up
             if self.vertical_scroll == 0 {
-                // TODO: Implement loading previous batch if needed
             } else {
                 self.vertical_scroll = self.vertical_scroll.saturating_sub((-amount) as usize);
             }
