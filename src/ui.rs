@@ -75,7 +75,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     frame.render_widget(header, top);
 
     if let Some(batch) = &app.current_batch {
-        let table = table::create_table(batch)
+        let table = table::create_table(batch.clone())
             .block(
                 Block::default()
                     .borders(Borders::ALL)

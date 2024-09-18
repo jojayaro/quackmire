@@ -1,8 +1,8 @@
 use crate::custom_table::Table;
 use duckdb::arrow::{record_batch::RecordBatch, util::pretty::pretty_format_batches};
 
-pub fn create_table(batch: &RecordBatch) -> Table {
-    let formatted = pretty_format_batches(&[batch.clone()]).unwrap().to_string();
+pub fn create_table(batch: RecordBatch) -> Table {
+    let formatted = pretty_format_batches(&[batch]).unwrap().to_string();
     let lines: Vec<&str> = formatted.lines().collect();
 
     if lines.len() < 5 {
