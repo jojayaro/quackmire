@@ -6,7 +6,7 @@ use duckdb::arrow::record_batch::RecordBatchIterator;
 use std::error::Error;
 use std::vec::IntoIter;
 
-use duckdb::{arrow::array::RecordBatch, Connection, Result as DuckResult};
+use duckdb::{arrow::array::RecordBatch, Connection};
 use ratatui::widgets::ScrollbarState;
 use ratatui_explorer::FileExplorer;
 use tui_textarea::TextArea;
