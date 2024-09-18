@@ -33,10 +33,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 }
             }
         }
-        (KeyCode::Down, KeyModifiers::SUPER) => app.file_explorer.handle(Input::Down)?,
-        (KeyCode::Up, KeyModifiers::SUPER) => app.file_explorer.handle(Input::Up)?,
-        (KeyCode::Left, KeyModifiers::SUPER) => app.file_explorer.handle(Input::Left)?,
-        (KeyCode::Right, KeyModifiers::SUPER) => app.file_explorer.handle(Input::Right)?,
+        (KeyCode::Char('j'), KeyModifiers::CONTROL) => app.file_explorer.handle(Input::Down)?,
+        (KeyCode::Char('k'), KeyModifiers::CONTROL) => app.file_explorer.handle(Input::Up)?,
+        (KeyCode::Char('h'), KeyModifiers::CONTROL) => app.file_explorer.handle(Input::Left)?,
+        (KeyCode::Char('l'), KeyModifiers::CONTROL) => app.file_explorer.handle(Input::Right)?,
         _ => {}
     }
 

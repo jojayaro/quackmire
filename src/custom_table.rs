@@ -22,12 +22,12 @@ impl Default for TableState {
 }
 
 pub struct Table {
-    headers: Vec<String>,
-    rows: Vec<Vec<String>>,
-    widths: Vec<u16>,
-    block: Option<Block<'static>>,
-    style: Style,
-    header_style: Style,
+    pub headers: Vec<String>,
+    pub rows: Vec<Vec<String>>,
+    pub widths: Vec<u16>,
+    pub block: Option<Block<'static>>,
+    pub style: Style,
+    pub header_style: Style,
 }
 
 impl Table {

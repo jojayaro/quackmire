@@ -108,7 +108,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     frame.render_widget(app.textarea.widget(), query);
 
-    let footer = Paragraph::new("Super + Arrows to navigate | Fn + 2 for query | ^o to open file | ^s to enter file path into query | Esc to exit")
+    let footer = Paragraph::new("Explorer: ^h Left ^j Down ^k Up ^l Right  | F2 for query | ^o to open file | ^s to enter file path into query | Esc to exit")
         .block(
             Block::bordered()
                 .title_alignment(Alignment::Left)

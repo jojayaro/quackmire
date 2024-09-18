@@ -29,7 +29,6 @@ pub struct App {
     pub horizontal_scroll_state: ScrollbarState,
     pub textarea: TextArea<'static>,
     pub file_explorer: FileExplorer,
-    #[allow(dead_code)]
     pub results_iterator: Option<RecordBatchIterator<IntoIter<Result<RecordBatch, ArrowError>>>>,
     pub current_batch: Option<RecordBatch>,
 }
@@ -117,8 +116,6 @@ impl App {
             // Scrolling left
             self.horizontal_scroll = self.horizontal_scroll.saturating_sub((-amount) as usize);
         }
-        self.horizontal_scroll_state = self
-            .horizontal_scroll_state
-            .position(self.horizontal_scroll);
+        self.horizontal_scroll_state = self.horizontal_scroll_state.position(self.horizontal_scroll);
     }
 }
