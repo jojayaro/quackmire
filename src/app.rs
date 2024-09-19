@@ -54,7 +54,8 @@ impl App {
         })
     }
     pub fn run_query(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut stmt = self.connection.prepare(&self.input)?;
+        let mut query = "SELECT * FROM (".to_owned() + self.input.trim() + ") LIMIT 300";
+        let mut stmt = self.connection.prepare(&query)?;
         let results: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
         if !results.is_empty() {
             let schema = results[0].schema();
