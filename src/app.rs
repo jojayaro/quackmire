@@ -1,24 +1,23 @@
 use crate::custom_table::TableState;
-use std::error;
-
-use duckdb::arrow::error::ArrowError;
-use duckdb::arrow::record_batch::RecordBatchIterator;
-use std::error::Error;
-use std::vec::IntoIter;
+use std::error::{self, Error};
 
 use duckdb::{arrow::array::RecordBatch, Connection};
 use ratatui::widgets::ScrollbarState;
 use ratatui_explorer::FileExplorer;
 use tui_textarea::TextArea;
+use crate::custom_table::Table;
+use duckdb::arrow::{util::{display::{ArrayFormatter, FormatOptions}}};
 
 /// Application result type.
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
 /// Application.
+#[derive(Debug)]
 pub struct App {
     pub running: bool,
     pub connection: Connection,
     pub input: String,
+    pub table: Table,
     pub table_state: TableState,
     pub results: Vec<RecordBatch>,
     pub error: Option<String>,
@@ -29,8 +28,6 @@ pub struct App {
     pub horizontal_scroll_state: ScrollbarState,
     pub textarea: TextArea<'static>,
     pub file_explorer: FileExplorer,
-    pub results_iterator: Option<RecordBatchIterator<IntoIter<Result<RecordBatch, ArrowError>>>>,
-    pub current_batch: Option<RecordBatch>,
 }
 
 impl App {
@@ -48,32 +45,32 @@ impl App {
             horizontal_scroll_state: ScrollbarState::default(),
             textarea: TextArea::default(),
             file_explorer: FileExplorer::new()?,
+            table: Table::default(),
             table_state: TableState::default(),
-            results_iterator: None,
-            current_batch: None,
         })
     }
-    pub fn run_query(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut query = "SELECT * FROM (".to_owned() + self.input.trim() + ") LIMIT 300";
-        let mut stmt = self.connection.prepare(&query)?;
-        let results: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
-        if !results.is_empty() {
-            let schema = results[0].schema();
-            let result_vec: Vec<Result<RecordBatch, ArrowError>> =
-                results.into_iter().map(Ok).collect();
-            let result_iter: IntoIter<Result<RecordBatch, ArrowError>> = result_vec.into_iter();
+    pub fn create_table(&mut self) -> Result<(), Box<dyn Error>> {
 
-            self.results_iterator = Some(RecordBatchIterator::new(result_iter, schema.clone()));
-            self.current_batch = self
-                .results_iterator
-                .as_mut()
-                .and_then(|iter| iter.next().transpose().ok())
-                .flatten();
-        } else {
-            self.results_iterator = None;
-            self.current_batch = None;
-        }
+        let mut stmt = self.connection.prepare(&self.input)?;
+        self.results = stmt.query_arrow([])?.collect();
+
+        let options = FormatOptions::default();
+    
+        let headers: Vec<String> = self.results[0].schema().fields.iter().map(|f| f.name().clone()).collect();
+    
+        let rows: Vec<Vec<String>> = (0..self.results[0].num_rows())
+            .map(|row| {
+                self.results[0].columns().iter().map(|c| {
+                    let formatter = ArrayFormatter::try_new(c.as_ref(), &options).unwrap();
+                    formatter.value(row).to_string()
+                }).collect()
+            })
+            .collect();
+    
+        self.table = Table::new(headers, rows);
+
         Ok(())
+    
     }
 
     /// Handles the tick event of the terminal.
@@ -89,34 +86,14 @@ impl App {
     }
 
     pub fn scroll_vertical(&mut self, amount: isize) {
-        if amount > 0 {
-            if self.vertical_scroll == self.current_batch.as_ref().map_or(0, |b| b.num_rows() - 1) {
-                if let Some(iter) = &mut self.results_iterator {
-                    if let Some(Ok(next_batch)) = iter.next() {
-                        self.current_batch = Some(next_batch);
-                        self.vertical_scroll = 0;
-                    }
-                }
-            } else {
-                self.vertical_scroll = self.vertical_scroll.saturating_add(amount as usize);
-            }
-        } else {
-            if self.vertical_scroll == 0 {
-            } else {
-                self.vertical_scroll = self.vertical_scroll.saturating_sub((-amount) as usize);
-            }
-        }
+        self.vertical_scroll = self.vertical_scroll.saturating_add_signed(amount);
         self.vertical_scroll_state = self.vertical_scroll_state.position(self.vertical_scroll);
     }
 
     pub fn scroll_horizontal(&mut self, amount: isize) {
-        if amount > 0 {
-            // Scrolling right
-            self.horizontal_scroll = self.horizontal_scroll.saturating_add(amount as usize);
-        } else {
-            // Scrolling left
-            self.horizontal_scroll = self.horizontal_scroll.saturating_sub((-amount) as usize);
-        }
-        self.horizontal_scroll_state = self.horizontal_scroll_state.position(self.horizontal_scroll);
+        self.horizontal_scroll = self.horizontal_scroll.saturating_add_signed(amount);
+        self.horizontal_scroll_state = self
+            .horizontal_scroll_state
+            .position(self.horizontal_scroll);
     }
 }

@@ -21,6 +21,7 @@ impl Default for TableState {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Table {
     pub headers: Vec<String>,
     pub rows: Vec<Vec<String>>,
@@ -31,6 +32,22 @@ pub struct Table {
 }
 
 impl Table {
+
+    pub fn default() -> Self {
+        Self {
+            headers: vec![],
+            rows: vec![],
+            widths: vec![],
+            block: None,
+            style: Style::default(),
+            header_style: Style::default(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.headers.is_empty() && self.rows.is_empty()
+    }
+
     pub fn new(headers: Vec<String>, rows: Vec<Vec<String>>) -> Self {
         let widths = if headers.is_empty() {
             vec![]

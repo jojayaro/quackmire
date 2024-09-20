@@ -1,31 +1,21 @@
 use crate::custom_table::Table;
-use duckdb::arrow::{record_batch::RecordBatch, util::pretty::pretty_format_batches};
+use duckdb::arrow::{record_batch::RecordBatch, util::{display::{ArrayFormatter, FormatOptions}, pretty::pretty_format_batches}};
 
 pub fn create_table(batch: RecordBatch) -> Table {
-    let formatted = pretty_format_batches(&[batch]).unwrap().to_string();
-    let lines: Vec<&str> = formatted.lines().collect();
 
-    if lines.len() < 5 {
-        return Table::new(vec![], vec![]);
-    }
+    let options = FormatOptions::default();
 
-    let headers: Vec<String> = lines[1]
-        .split('|')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
+    let headers: Vec<String> = batch.schema().fields.iter().map(|f| f.name().clone()).collect();
 
-    let rows: Vec<Vec<String>> = lines
-        .iter()
-        .skip(3)
-        .filter(|line| !line.starts_with('+') && !line.trim().is_empty()) // Skip border lines
-        .map(|line| {
-            line.split('|')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect()
+    let rows: Vec<Vec<String>> = (0..batch.num_rows())
+        .map(|row| {
+            batch.columns().iter().map(|c| {
+                let formatter = ArrayFormatter::try_new(c.as_ref(), &options).unwrap();
+                formatter.value(row).to_string()
+            }).collect()
         })
         .collect();
 
     Table::new(headers, rows)
+
 }

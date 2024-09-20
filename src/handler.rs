@@ -13,7 +13,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
         }
         (KeyCode::F(2), _) => {
-            if let Err(e) = app.run_query() {
+            if let Err(e) = app.create_table() {
                 app.results.clear();
                 app.error = Some(format!("Error: {}", e));
                 app.toggle_error_popup();
@@ -33,10 +33,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 }
             }
         }
-        (KeyCode::Char('j'), KeyModifiers::CONTROL) => app.file_explorer.handle(Input::Down)?,
-        (KeyCode::Char('k'), KeyModifiers::CONTROL) => app.file_explorer.handle(Input::Up)?,
-        (KeyCode::Char('h'), KeyModifiers::CONTROL) => app.file_explorer.handle(Input::Left)?,
-        (KeyCode::Char('l'), KeyModifiers::CONTROL) => app.file_explorer.handle(Input::Right)?,
+        (KeyCode::Down, KeyModifiers::SUPER) => app.file_explorer.handle(Input::Down)?,
+        (KeyCode::Up, KeyModifiers::SUPER) => app.file_explorer.handle(Input::Up)?,
+        (KeyCode::Left, KeyModifiers::SUPER) => app.file_explorer.handle(Input::Left)?,
+        (KeyCode::Right, KeyModifiers::SUPER) => app.file_explorer.handle(Input::Right)?,
         _ => {}
     }
 

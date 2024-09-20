@@ -1,5 +1,3 @@
-use crate::table;
-
 use ratatui::{
     layout::{Alignment, Constraint, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
@@ -74,8 +72,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     frame.render_widget(header, top);
 
-    if let Some(batch) = &app.current_batch {
-        let table = table::create_table(batch.clone())
+    if !app.table.is_empty() {
+        let table = app.table.clone()
             .block(
                 Block::default()
                     .borders(Borders::ALL)
@@ -88,11 +86,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             .header_style(Style::default().fg(PURPLE).bold());
         // .selected_style(Style::default().bg(FG));
 
-        let mut table_state = app.table_state.clone();
-        table_state.offset_x = app.horizontal_scroll as u16;
-        table_state.offset_y = app.vertical_scroll as u16;
-
-        frame.render_stateful_widget(table, results, &mut table_state);
+        frame.render_stateful_widget(table, results, &mut app.table_state);
     } else {
         let no_results = Paragraph::new("")
             .block(
@@ -108,7 +102,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     frame.render_widget(app.textarea.widget(), query);
 
-    let footer = Paragraph::new("Explorer: ^h Left ^j Down ^k Up ^l Right  | F2 for query | ^o to open file | ^s to enter file path into query | Esc to exit")
+    let footer = Paragraph::new("Super + Arrows to navigate | Fn + 2 for query | ^o to open file | ^s to enter file path into query | Esc to exit")
         .block(
             Block::bordered()
                 .title_alignment(Alignment::Left)

@@ -14,9 +14,14 @@ pub mod app;
 pub mod custom_table;
 pub mod event;
 pub mod handler;
-pub mod table;
 pub mod tui;
 pub mod ui;
+
+// fn execute_query(&mut self) -> DuckResult<()> {
+//     let mut stmt = self.connection.prepare(&self.input)?;
+//     self.results = stmt.query_arrow([])?.collect();
+//     Ok(())
+// }
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -42,16 +47,16 @@ async fn main() -> AppResult<()> {
             }
             Event::Mouse(mouse) => match mouse.kind {
                 MouseEventKind::ScrollDown => {
-                    app.scroll_vertical(1);
+                    app.table_state.offset_y = app.table_state.offset_y.saturating_sub(1);
                 }
                 MouseEventKind::ScrollUp => {
-                    app.scroll_vertical(-1);
+                    app.table_state.offset_y = app.table_state.offset_y.saturating_add(1);
                 }
                 MouseEventKind::ScrollRight => {
-                    app.scroll_horizontal(1);
+                    app.table_state.offset_x = app.table_state.offset_x.saturating_sub(1);
                 }
                 MouseEventKind::ScrollLeft => {
-                    app.scroll_horizontal(-1);
+                    app.table_state.offset_x = app.table_state.offset_x.saturating_add(1);
                 }
                 _ => {}
             },
