@@ -73,7 +73,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     frame.render_widget(header, top);
 
     if !app.table.is_empty() {
-        let table = app.table.clone()
+        let table = app
+            .table
+            .clone()
             .block(
                 Block::default()
                     .borders(Borders::ALL)

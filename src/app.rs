@@ -1,12 +1,12 @@
 use crate::custom_table::TableState;
 use std::error::{self, Error};
 
+use crate::custom_table::Table;
+use duckdb::arrow::util::display::{ArrayFormatter, FormatOptions};
 use duckdb::{arrow::array::RecordBatch, Connection};
 use ratatui::widgets::ScrollbarState;
 use ratatui_explorer::FileExplorer;
 use tui_textarea::TextArea;
-use crate::custom_table::Table;
-use duckdb::arrow::{util::{display::{ArrayFormatter, FormatOptions}}};
 
 /// Application result type.
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
@@ -50,27 +50,34 @@ impl App {
         })
     }
     pub fn create_table(&mut self) -> Result<(), Box<dyn Error>> {
-
         let mut stmt = self.connection.prepare(&self.input)?;
         self.results = stmt.query_arrow([])?.collect();
 
         let options = FormatOptions::default();
-    
-        let headers: Vec<String> = self.results[0].schema().fields.iter().map(|f| f.name().clone()).collect();
-    
+
+        let headers: Vec<String> = self.results[0]
+            .schema()
+            .fields
+            .iter()
+            .map(|f| f.name().clone())
+            .collect();
+
         let rows: Vec<Vec<String>> = (0..self.results[0].num_rows())
             .map(|row| {
-                self.results[0].columns().iter().map(|c| {
-                    let formatter = ArrayFormatter::try_new(c.as_ref(), &options).unwrap();
-                    formatter.value(row).to_string()
-                }).collect()
+                self.results[0]
+                    .columns()
+                    .iter()
+                    .map(|c| {
+                        let formatter = ArrayFormatter::try_new(c.as_ref(), &options).unwrap();
+                        formatter.value(row).to_string()
+                    })
+                    .collect()
             })
             .collect();
-    
+
         self.table = Table::new(headers, rows);
 
         Ok(())
-    
     }
 
     /// Handles the tick event of the terminal.

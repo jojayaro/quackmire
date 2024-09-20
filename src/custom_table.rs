@@ -32,7 +32,6 @@ pub struct Table {
 }
 
 impl Table {
-
     pub fn default() -> Self {
         Self {
             headers: vec![],
