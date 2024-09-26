@@ -14,6 +14,7 @@ pub mod app;
 pub mod custom_table;
 pub mod event;
 pub mod handler;
+pub mod popup;
 pub mod tui;
 pub mod ui;
 

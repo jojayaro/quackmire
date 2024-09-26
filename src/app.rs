@@ -1,5 +1,8 @@
 use crate::custom_table::TableState;
+use crate::popup::FileNamePopup;
 use std::error::{self, Error};
+use std::fs;
+use std::path::PathBuf;
 
 use crate::custom_table::Table;
 use duckdb::arrow::util::display::{ArrayFormatter, FormatOptions};
@@ -28,6 +31,8 @@ pub struct App {
     pub horizontal_scroll_state: ScrollbarState,
     pub textarea: TextArea<'static>,
     pub file_explorer: FileExplorer,
+    pub show_save_popup: bool,
+    pub save_popup: FileNamePopup,
 }
 
 impl App {
@@ -47,6 +52,8 @@ impl App {
             file_explorer: FileExplorer::new()?,
             table: Table::default(),
             table_state: TableState::default(),
+            show_save_popup: false,
+            save_popup: FileNamePopup::new(),
         })
     }
     pub fn create_table(&mut self) -> Result<(), Box<dyn Error>> {
@@ -102,5 +109,16 @@ impl App {
         self.horizontal_scroll_state = self
             .horizontal_scroll_state
             .position(self.horizontal_scroll);
+    }
+    pub fn save_to_file(&self, file_name: &str) -> AppResult<()> {
+        let path = PathBuf::from(file_name);
+        fs::write(path, &self.input)?;
+        Ok(())
+    }
+    pub fn toggle_save_popup(&mut self) {
+        self.show_save_popup = !self.show_save_popup;
+        if !self.show_save_popup {
+            self.save_popup.input.clear();
+        }
     }
 }

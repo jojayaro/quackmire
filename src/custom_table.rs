@@ -111,15 +111,33 @@ impl StatefulWidget for Table {
 
         buf.set_style(table_area, self.style);
 
-        let mut y = table_area.top();
         let visible_width = table_area.width;
         let visible_height = table_area.height;
 
+        // Calculate visible columns
+        let mut visible_columns = Vec::new();
+        let mut cumulative_width = 0;
+        let mut start_col = 0;
+        for (i, &width) in self.widths.iter().enumerate() {
+            if cumulative_width >= state.offset_x {
+                if start_col == 0 {
+                    start_col = i;
+                }
+                visible_columns.push((i, width));
+                cumulative_width += width + 1;
+                if cumulative_width > state.offset_x + visible_width {
+                    break;
+                }
+            } else {
+                cumulative_width += width + 1;
+            }
+        }
+
         // Render headers
-        let mut x = table_area.left().saturating_sub(state.offset_x);
-        for (i, header) in self.headers.iter().enumerate() {
-            let width = self.widths[i];
-            if x >= table_area.left() && x + width <= table_area.right() {
+        let mut y = table_area.top();
+        let mut x = table_area.left();
+        for (i, width) in visible_columns.iter() {
+            if let Some(header) = self.headers.get(*i) {
                 buf.set_string(x, y, header, self.header_style);
             }
             x += width + 1;
@@ -127,20 +145,19 @@ impl StatefulWidget for Table {
 
         // Render rows
         if !self.rows.is_empty() {
-            for row in self.rows.iter().skip(state.offset_y as usize) {
+            for row in self
+                .rows
+                .iter()
+                .skip(state.offset_y as usize)
+                .take(visible_height as usize - 1)
+            {
                 y += 1;
-                if y >= table_area.bottom() {
-                    break;
-                }
-                let mut x = table_area.left().saturating_sub(state.offset_x);
-                for (i, cell) in row.iter().enumerate() {
-                    if i < self.widths.len() {
-                        let width = self.widths[i];
-                        if x >= table_area.left() && x + width <= table_area.right() {
-                            buf.set_string(x, y, cell, self.style);
-                        }
-                        x += width + 1;
+                x = table_area.left();
+                for (i, width) in visible_columns.iter() {
+                    if let Some(cell) = row.get(*i) {
+                        buf.set_string(x, y, cell, self.style);
                     }
+                    x += width + 1;
                 }
             }
         }

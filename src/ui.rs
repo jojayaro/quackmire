@@ -104,7 +104,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     frame.render_widget(app.textarea.widget(), query);
 
-    let footer = Paragraph::new("Super + Arrows to navigate | Fn + 2 for query | ^o to open file | ^s to enter file path into query | Esc to exit")
+    let footer = Paragraph::new("Super + Arrows to navigate | Fn + 2 for query | ^o to open file | ^s to save file | ^a to enter file path into query | Esc to exit")
         .block(
             Block::bordered()
                 .title_alignment(Alignment::Left)
@@ -113,6 +113,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         )
         .style(Style::default().fg(FG).bg(BG));
     frame.render_widget(footer, bottom);
+
+    if app.show_save_popup {
+        app.save_popup.render(frame);
+    }
 
     if app.show_error_popup {
         let area = frame.area(); // Changed from f.size() to f.area()
