@@ -2,11 +2,11 @@ use ratatui::{
     layout::{Alignment, Constraint, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
     text::Text,
-    widgets::{Block, BorderType, Borders, Clear, Paragraph, Wrap},
+    widgets::{BorderType, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
 use ratatui_explorer::Theme;
-
+use ratatui::widgets::block::Block;
 use crate::app::App;
 
 const BG: Color = Color::Rgb(40, 40, 40); // Dark background
