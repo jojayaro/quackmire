@@ -18,7 +18,7 @@ To install Quackmire, you need to have Rust and Cargo installed on your system. 
 Once Rust is installed, clone this repository and build the project:
 
 ```bash
-git clone https://github.com/yourusername/quackmire.git
+git clone https://github.com/jojayaro/quackmire.git
 cd quackmire
 cargo build --release
 ```
