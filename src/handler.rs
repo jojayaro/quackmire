@@ -32,7 +32,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         }
         (KeyCode::F(2), _) => {
             if let Err(e) = app.create_table() {
-                app.results.clear();
+                app.formatted_output.clear();
                 app.error = Some(format!("Error: {}", e));
                 app.toggle_error_popup();
             }

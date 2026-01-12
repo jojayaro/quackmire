@@ -1,2 +1,2 @@
 SELECT *
-FROM 'data/pivot.parquet'
+FROM 'data.csv'

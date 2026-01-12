@@ -1,11 +1,9 @@
-use crate::custom_table::TableState;
 use crate::popup::FileNamePopup;
 use std::error::{self, Error};
 use std::fs;
 use std::path::PathBuf;
 
-use crate::custom_table::Table;
-use duckdb::arrow::util::display::{ArrayFormatter, FormatOptions};
+use duckdb::arrow::util::pretty::pretty_format_batches;
 use duckdb::{arrow::array::RecordBatch, Connection};
 use ratatui::widgets::ScrollbarState;
 use ratatui_explorer::FileExplorer;
@@ -20,9 +18,7 @@ pub struct App {
     pub running: bool,
     pub connection: Connection,
     pub input: String,
-    pub table: Table,
-    pub table_state: TableState,
-    pub results: Vec<RecordBatch>,
+    pub formatted_output: String,
     pub error: Option<String>,
     pub show_error_popup: bool,
     pub vertical_scroll: usize,
@@ -41,7 +37,7 @@ impl App {
             running: true,
             connection: Connection::open_in_memory()?,
             input: String::new(),
-            results: Vec::new(),
+            formatted_output: String::new(),
             error: None,
             show_error_popup: false,
             vertical_scroll: 0,
@@ -50,39 +46,27 @@ impl App {
             horizontal_scroll_state: ScrollbarState::default(),
             textarea: TextArea::default(),
             file_explorer: FileExplorer::new()?,
-            table: Table::default(),
-            table_state: TableState::default(),
             show_save_popup: false,
             save_popup: FileNamePopup::new(),
         })
     }
     pub fn create_table(&mut self) -> Result<(), Box<dyn Error>> {
         let mut stmt = self.connection.prepare(&self.input)?;
-        self.results = stmt.query_arrow([])?.collect();
+        let rbs: Vec<RecordBatch> = stmt.query_arrow([])?.collect();
 
-        let options = FormatOptions::default();
+        if rbs.is_empty() || rbs[0].num_rows() == 0 {
+            self.formatted_output = String::new();
+            return Ok(());
+        }
 
-        let headers: Vec<String> = self.results[0]
-            .schema()
-            .fields
-            .iter()
-            .map(|f| f.name().clone())
-            .collect();
+        // Use Arrow's native formatting for efficiency
+        self.formatted_output = pretty_format_batches(&rbs)
+            .map_err(|e| Box::new(e) as Box<dyn Error>)?
+            .to_string();
 
-        let rows: Vec<Vec<String>> = (0..self.results[0].num_rows())
-            .map(|row| {
-                self.results[0]
-                    .columns()
-                    .iter()
-                    .map(|c| {
-                        let formatter = ArrayFormatter::try_new(c.as_ref(), &options).unwrap();
-                        formatter.value(row).to_string()
-                    })
-                    .collect()
-            })
-            .collect();
-
-        self.table = Table::new(headers, rows);
+        // Reset scroll position on new query
+        self.vertical_scroll = 0;
+        self.horizontal_scroll = 0;
 
         Ok(())
     }

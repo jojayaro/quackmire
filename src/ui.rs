@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Alignment, Constraint, Flex, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Color, Style},
     text::Text,
     widgets::{BorderType, Borders, Clear, Paragraph, Wrap},
     Frame,
@@ -72,10 +72,34 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     frame.render_widget(header, top);
 
-    if !app.table.is_empty() {
-        let table = app
-            .table
-            .clone()
+    if !app.formatted_output.is_empty() {
+        let lines: Vec<&str> = app.formatted_output.lines().collect();
+        let vertical_offset = app.vertical_scroll.min(lines.len().saturating_sub(1));
+        let visible_lines: Vec<&str> = lines
+            .iter()
+            .skip(vertical_offset)
+            .take((results.height as usize).saturating_sub(2))
+            .copied()
+            .collect();
+
+        let content = if visible_lines.is_empty() {
+            String::new()
+        } else {
+            let line_slice = visible_lines.join("\n");
+            let horizontal_offset = app.horizontal_scroll;
+            line_slice
+                .lines()
+                .map(|line| {
+                    line.chars()
+                        .skip(horizontal_offset)
+                        .take(results.width as usize)
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+
+        let output = Paragraph::new(content)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
@@ -84,11 +108,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     .title("Results")
                     .title_alignment(Alignment::Left),
             )
-            .style(Style::default().fg(FG).bg(BG))
-            .header_style(Style::default().fg(PURPLE).bold());
-        // .selected_style(Style::default().bg(FG));
+            .style(Style::default().fg(FG).bg(BG));
 
-        frame.render_stateful_widget(table, results, &mut app.table_state);
+        frame.render_widget(output, results);
     } else {
         let no_results = Paragraph::new("")
             .block(
@@ -102,7 +124,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     frame.render_widget_ref(app.file_explorer.widget(), explorer);
 
-    frame.render_widget(app.textarea.widget(), query);
+    frame.render_widget(&app.textarea, query);
 
     let footer = Paragraph::new("Super + Arrows to navigate | Fn + 2 for query | ^o to open file | ^s to save file | ^a to enter file path into query | Esc to exit")
         .block(

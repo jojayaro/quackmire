@@ -11,7 +11,6 @@ use crate::{
 };
 
 pub mod app;
-pub mod custom_table;
 pub mod event;
 pub mod handler;
 pub mod popup;
@@ -48,16 +47,16 @@ async fn main() -> AppResult<()> {
             }
             Event::Mouse(mouse) => match mouse.kind {
                 MouseEventKind::ScrollDown => {
-                    app.table_state.offset_y = app.table_state.offset_y.saturating_sub(1);
+                    app.scroll_vertical(1);
                 }
                 MouseEventKind::ScrollUp => {
-                    app.table_state.offset_y = app.table_state.offset_y.saturating_add(1);
+                    app.scroll_vertical(-1);
                 }
                 MouseEventKind::ScrollRight => {
-                    app.table_state.offset_x = app.table_state.offset_x.saturating_sub(1);
+                    app.scroll_horizontal(1);
                 }
                 MouseEventKind::ScrollLeft => {
-                    app.table_state.offset_x = app.table_state.offset_x.saturating_add(1);
+                    app.scroll_horizontal(-1);
                 }
                 _ => {}
             },
